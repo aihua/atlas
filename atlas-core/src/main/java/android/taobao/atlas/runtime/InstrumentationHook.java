@@ -233,13 +233,14 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.taobao.atlas.bundleInfo.AtlasBundleInfoManager;
+import android.taobao.atlas.bundleInfo.BundleListing;
 import android.taobao.atlas.framework.Atlas;
 import android.taobao.atlas.framework.BundleClassLoader;
 import android.taobao.atlas.framework.BundleImpl;
 import android.taobao.atlas.framework.Framework;
 import android.taobao.atlas.hack.AtlasHacks;
+import android.taobao.atlas.hack.Hack;
 import android.taobao.atlas.runtime.newcomponent.activity.ActivityBridge;
-import android.taobao.atlas.util.log.impl.AtlasMonitor;
 import android.taobao.atlas.util.FileUtils;
 import android.taobao.atlas.util.StringUtils;
 import android.text.TextUtils;
@@ -248,6 +249,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.content.BroadcastReceiver;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -365,13 +367,13 @@ public class InstrumentationHook extends Instrumentation {
 		// Get package name and component name
 		String packageName = null;
 		String componentName = null;
-		if (intent.getComponent() != null) {
-			packageName = intent.getComponent().getPackageName();
-			componentName = intent.getComponent().getClassName();
-		} else {
-			ResolveInfo resolveInfo = context.getPackageManager().resolveActivity(intent, 0);
-			if (resolveInfo != null && resolveInfo.activityInfo != null) {
-				packageName = resolveInfo.activityInfo.packageName;
+
+		ResolveInfo resolveInfo = context.getPackageManager().resolveActivity(intent, 0);
+		if (resolveInfo != null && resolveInfo.activityInfo != null) {
+			packageName = resolveInfo.activityInfo.packageName;
+			if(!TextUtils.isEmpty(resolveInfo.activityInfo.targetActivity)) {
+				componentName = resolveInfo.activityInfo.targetActivity;
+			}else{
 				componentName = resolveInfo.activityInfo.name;
 			}
 		}
@@ -401,7 +403,7 @@ public class InstrumentationHook extends Instrumentation {
 		}
 
 		String bundleName = AtlasBundleInfoManager.instance().getBundleForComponet(componentName);
-		if(!TextUtils.isEmpty(bundleName)){
+		if(!TextUtils.isEmpty(bundleName) && !Atlas.isDisableBundle(bundleName)){
 			BundleImpl impl = (BundleImpl)Atlas.getInstance().getBundle(bundleName);
 			if(impl!=null&&impl.checkValidate()) {
 				return callback.execStartActivity();
@@ -456,7 +458,6 @@ public class InstrumentationHook extends Instrumentation {
 			@Override
 			public void run() {
 				Log.e("InstrumentationHook","async startActivity");
-//				if (current == ActivityTaskMgr.getInstance().peekTopActivity() || activitySize == ActivityTaskMgr.getInstance().sizeOfActivityStack()+1) {
 					if (context instanceof Activity) {
 						callback.execStartActivity();
 						((Activity)context).overridePendingTransition(0,0);
@@ -466,11 +467,16 @@ public class InstrumentationHook extends Instrumentation {
 					}
 //				}
 
+
 				if (dialog != null && current != null && !current.isFinishing()) {
 					try {
-						if(dialog.isShowing())
+						if(dialog.isShowing()) {
 							dialog.dismiss();
-					}catch (Throwable e){}
+							ActivityTaskMgr.getInstance().sReminderDialog = null;
+						}
+					}catch (Throwable e){
+						ActivityTaskMgr.getInstance().sReminderDialog = null;
+					}
 				}
 			}
 		});
@@ -479,14 +485,17 @@ public class InstrumentationHook extends Instrumentation {
 			public void run() {
 				if (current == ActivityTaskMgr.getInstance().peekTopActivity()) {
 					fallBackToClassNotFoundCallback(context, intent, component);
-//					Toast.makeText(RuntimeVariables.androidApplication, "install error", Toast.LENGTH_SHORT).show();
 				}
 
 				if (dialog != null && current != null && !current.isFinishing()) {
 					try {
-						if(dialog.isShowing())
+						if(dialog.isShowing()) {
 							dialog.dismiss();
-					}catch(Throwable e){}
+							ActivityTaskMgr.getInstance().sReminderDialog = null;
+						}
+					}catch(Throwable e){
+						ActivityTaskMgr.getInstance().sReminderDialog = null;
+					}
 				}
 			}
 		});
@@ -504,6 +513,7 @@ public class InstrumentationHook extends Instrumentation {
 				if (dialog != null && current != null && !current.isFinishing() && !dialog.isShowing()) {
 					try {
 						dialog.show();
+						ActivityTaskMgr.getInstance().sReminderDialog = dialog;
 					} catch (Throwable e) {
 					}
 				}
@@ -558,6 +568,14 @@ public class InstrumentationHook extends Instrumentation {
         }
 
         try {
+			BundleListing.BundleInfo info = AtlasBundleInfoManager.instance().getBundleInfo(className);
+			if(info!=null){
+				BundleImpl impl = (BundleImpl) Atlas.getInstance().getBundle(info.getPkgName());
+				if(impl==null || !impl.checkValidate()){
+					Log.e("Instrumentation","bundleInvalid: "+info.getPkgName());
+					throw new ClassNotFoundException("bundleInvalid");
+				}
+			}
             activity = mBase.newActivity(cl, className, intent);
         } catch (ClassNotFoundException e) {
         	String launchActivityName = "";
@@ -608,6 +626,10 @@ public class InstrumentationHook extends Instrumentation {
         }
 		if(AtlasHacks.ContextThemeWrapper_mBase!=null && AtlasHacks.ContextThemeWrapper_mBase.getField()!=null){
 			AtlasHacks.ContextThemeWrapper_mBase.set(activity,hook);
+		}
+		if (AtlasHacks.ContextThemeWrapper_mResources != null) {
+			//AtlasHacks.ContextThemeWrapper_mResources.on(activity).set(RuntimeVariables.delegateResources);
+			AtlasHacks.ContextThemeWrapper_mResources.set(activity,RuntimeVariables.delegateResources);
 		}
 		AtlasHacks.ContextWrapper_mBase.set(activity,hook);
 		String Location = null;
@@ -1045,6 +1067,17 @@ public class InstrumentationHook extends Instrumentation {
     @Override
     public void callActivityOnDestroy(Activity activity) {
         mBase.callActivityOnDestroy(activity);
+		if(activity!=null && activity.getBaseContext() instanceof ContextImplHook){
+			try {
+				Hack.HackedMethod scheduleFinalCleanup = AtlasHacks.ContextImpl.method("scheduleFinalCleanup",String.class,String.class);
+				if(scheduleFinalCleanup.getMethod()!=null){
+					scheduleFinalCleanup.invoke(((ContextImplHook)activity.getBaseContext()).getBaseContext(),
+							activity.getClass().getName(),"Activity");
+				}
+			} catch (Throwable e) {
+				e.printStackTrace();
+			}
+		}
     }
 
     @Override

@@ -430,6 +430,26 @@ public class PatchBundleInfo {
     private String  artifactId;
     private String baseVersion;
 
+    public int getPatchType() {
+        return patchType;
+    }
+
+    public void setPatchType(int patchType) {
+        this.patchType = patchType;
+    }
+
+    private int patchType = 0;
+
+    public boolean isInherit() {
+        return inherit;
+    }
+
+    public void setInherit(boolean inherit) {
+        this.inherit = inherit;
+    }
+
+    private boolean inherit;
+
     public boolean isReset() {
         return reset;
     }

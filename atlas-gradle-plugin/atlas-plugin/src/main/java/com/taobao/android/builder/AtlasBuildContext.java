@@ -215,6 +215,8 @@ import com.google.common.collect.Maps;
 import com.taobao.android.builder.adapter.BuilderAdapter;
 import com.taobao.android.builder.dependency.AtlasDependencyTree;
 import com.taobao.android.builder.dependency.model.AwbBundle;
+import com.taobao.android.builder.tasks.dexpatch.builder.DefaultDexBuilder;
+import com.taobao.android.builder.tasks.dexpatch.builder.DexBuilder;
 import org.gradle.api.Project;
 
 import java.util.HashMap;
@@ -222,12 +224,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Created by shenghua.nish on 2016-05-09 下午3:50.
+ * Created by shenghua.nish on 2016-05-09 At 3:50 p.m.
  */
 public class AtlasBuildContext {
 
     /**
-     * 外部插件可以更改该类的具体的实现
+     * External plug-ins can change the specific implementation of this class
      */
     public static BuilderAdapter sBuilderAdapter = new BuilderAdapter();
 
@@ -243,15 +245,17 @@ public class AtlasBuildContext {
 
     public static Set<String> conflictDependencies;
 
+    public static DexBuilder dexBuilder = DefaultDexBuilder.getInstance();
+
     /**
-     * 依赖对应原始的坐标地址， classInject 需要查找到atlas。
+     * Depending on the original coordinate address, classInject You need to find atlas.
      *
-     * 文件展开目录 -> 坐标地址
+     * File open directory -> Coordinates the address
      */
     public static Map<String, MavenCoordinates> dependencyTraceMap = new HashMap<>();
 
     /**
-     * 修改后的文件 -> 原始文件
+     * Modified file -> The original file
      */
     public static Map<String, String> jarTraceMap = new HashMap<String, String>();
 

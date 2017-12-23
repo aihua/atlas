@@ -316,7 +316,7 @@ public class BundleGraphExecutor {
                 bundleItemMap.put(bundleInfo.getPkgName(), bundleItem);
             }
 
-            //计算依赖
+            //Computing rely on
             for (String dependency : bundleInfo.getDependency()) {
                 if (StringUtils.isNotEmpty(dependency)) {
                     BundleItem child = bundleItemMap.get(dependency);
@@ -349,15 +349,16 @@ public class BundleGraphExecutor {
                     list.add(b.bundleInfo.getPkgName());
                 }
                 Collections.sort(list);
-                String key = StringUtils.join(list.toArray());
+                String key = StringUtils.join(list.toArray(),",");
                 circleMap.put(key, bundleItems);
             }
         }
 
+        //TODO
         for (Set<BundleItem> sets : circleMap.values()) {
             int i = 0;
             BundleItem main = null;
-            for (BundleItem bundleItem : sets) {
+            for (BundleItem bundleItem : getOrderList(sets)) {
                 if (i++ == 0) {
                     main = bundleItem;
                 } else {
@@ -366,6 +367,15 @@ public class BundleGraphExecutor {
                 }
             }
         }
+
+
+
+    }
+
+    private static List<BundleItem> getOrderList(Set<BundleItem> sets){
+        List<BundleItem> list = new ArrayList<>(sets);
+        list.sort((o1, o2) -> o1.bundleInfo.getPkgName().compareTo(o2.bundleInfo.getPkgName()));
+        return list;
     }
 
 }

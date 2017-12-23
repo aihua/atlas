@@ -209,7 +209,20 @@
 
 package com.taobao.android.builder.tools.classinject;
 
+import java.io.File;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import com.alibaba.fastjson.JSON;
+
 import com.android.build.gradle.internal.api.AppVariantContext;
 import com.taobao.android.builder.AtlasBuildContext;
 import com.taobao.android.builder.dependency.AtlasDependencyTree;
@@ -220,12 +233,6 @@ import com.taobao.android.builder.tools.bundleinfo.model.BasicBundleInfo;
 import com.taobao.android.builder.tools.bundleinfo.model.BundleInfo;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Created by wuzhong on 2016/12/1.
@@ -254,11 +261,12 @@ public class ApkInjectInfoCreator {
                 return o1.compareTo(o2);
             }
         });
-        String mainMd5 = MD5Util.getMD5(StringUtils.join(mainDexDependencies));
-        injectParam.unit_tag = mainMd5;
-        appVariantContext.unit_tag = mainMd5;
+        String mainMd532 = MD5Util.getMD5(StringUtils.join(mainDexDependencies));
+        String md5base36 = new BigInteger(mainMd532.substring(8,24),16).toString(36);
+        injectParam.unit_tag = md5base36;
+        appVariantContext.unit_tag = md5base36;
 
-        //依赖是否发送变更
+        //Depends on whether the change is sent
         DependencyDiff dependencyDiff = appVariantContext.getDependencyDiff();
         Map<String, String> baseTagMap = appVariantContext.getBaseUnitTagMap();
 
@@ -273,14 +281,15 @@ public class ApkInjectInfoCreator {
             basicBundleInfo.setPkgName(bundleInfo.getPkgName());
 
             //set unique_tag
-            String bundleMd5 = MD5Util.getMD5(StringUtils.join(awbBundle.getAllDependencies()));
+            String bundleDependencyMd532 = MD5Util.getMD5(StringUtils.join(awbBundle.getAllDependencies()));
             String bundleUnitTag = "";
 
             if ( null != dependencyDiff && !dependencyDiff.isDiffBundle(awbBundle)){
                 bundleUnitTag = baseTagMap.get(awbBundle.getPackageName());
             }
             if (StringUtils.isEmpty(bundleUnitTag)){
-                bundleUnitTag = MD5Util.getMD5(mainMd5 + bundleMd5);
+                String bundleMd532 = MD5Util.getMD5(mainMd532 + bundleDependencyMd532);
+                bundleUnitTag = new BigInteger(bundleMd532.substring(8,24),16).toString(36);
             }
 
             basicBundleInfo.setUnique_tag(bundleUnitTag);
@@ -303,6 +312,15 @@ public class ApkInjectInfoCreator {
             }
             if (!bundleInfo.getServices().isEmpty()) {
                 basicBundleInfo.setServices(bundleInfo.getServices());
+            }
+            if (!bundleInfo.getRemoteFragments().isEmpty()) {
+                basicBundleInfo.setRemoteFragments(bundleInfo.getRemoteFragments());
+            }
+            if (!bundleInfo.getRemoteViews().isEmpty()) {
+                basicBundleInfo.setRemoteViews(bundleInfo.getRemoteViews());
+            }
+            if (!bundleInfo.getRemoteTransactors().isEmpty()) {
+                basicBundleInfo.setRemoteTransactors(bundleInfo.getRemoteTransactors());
             }
 
             basicBundleInfos.add(basicBundleInfo);
@@ -374,6 +392,16 @@ public class ApkInjectInfoCreator {
                     basicBundleInfo.setServices(concatList(baseBundleInfo.getServices(),
                                                            basicBundleInfo.getServices()));
                 }
+
+                if(!baseBundleInfo.getRemoteFragments().isEmpty()){
+                    basicBundleInfo.getRemoteFragments().putAll(baseBundleInfo.getRemoteFragments());
+                }
+                if(!baseBundleInfo.getRemoteViews().isEmpty()){
+                    basicBundleInfo.getRemoteViews().putAll(baseBundleInfo.getRemoteViews());
+                }
+                if(!baseBundleInfo.getRemoteTransactors().isEmpty()){
+                    basicBundleInfo.getRemoteTransactors().putAll(baseBundleInfo.getRemoteTransactors());
+                }
             }
             injectParam.bundleInfo = JSON.toJSONString(basicBundleInfos);
             injectParam.autoStartBundles = atlasFrameworkProperties.autoStartBundles;
@@ -386,4 +414,11 @@ public class ApkInjectInfoCreator {
             .distinct()
             .collect(Collectors.toList());
     }
+
+
+    public void injectTpatchValuesRes(AppVariantContext appVariantContext,
+                                      File valuesXml){
+
+    }
+
 }

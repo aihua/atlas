@@ -209,15 +209,6 @@
 
 package com.taobao.android.builder.tools.multidex.dex;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import com.taobao.android.builder.extension.MultiDexConfig;
 import com.taobao.android.builder.tools.concurrent.ExecutorServicesHelper;
 import com.taobao.android.builder.tools.multidex.FastMultiDexer;
@@ -229,6 +220,11 @@ import org.gradle.api.GradleException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by wuzhong on 2017/5/31.
@@ -272,9 +268,7 @@ public class DexMerger {
     }
 
     public List<DexGroup> group() {
-
         List<DexGroup> dexGroupList = new ArrayList<>();
-
         addDexByRule(dexGroupList);
 
         addDexLimited(dexGroupList, true);
@@ -311,7 +305,7 @@ public class DexMerger {
             throw new GradleException(e.getMessage(), e);
         }
 
-        if (!dexList.isEmpty()) {
+        if (!dexList.isEmpty() ) {
             mergeSmallDexs(outDexFolder, mergedList);
         }
 
@@ -389,7 +383,10 @@ public class DexMerger {
             }
             String[] items = rule.split(",");
             for (File file : fileList) {
-                if (match(items, file) || (0 == i && file.getName().equals(FASTMAINDEX_JAR))) {
+                if (match(items, file) || (0 == i && file.getAbsolutePath().contains(FASTMAINDEX_JAR))) {
+
+                    logger.warn("FASTMULTIDEX put file " + file.getAbsolutePath() + " to dex " + i);
+
                     Dex dex = jarDexMap.get(file);
                     if (!dexDto.addDex(dex)) {
                         throw new DexIndexOverflowException(file.getAbsolutePath() + " can't add to dex" + i);
@@ -411,7 +408,7 @@ public class DexMerger {
         int index = 0;
         DexGroup dexDto = getDexDto(dexDtos, index);
         for (Dex dex : new ArrayList<>(dexList)) {
-            //如果不能加入进去，需要重新扩展一个dex
+            //If you can't join in, you need to re-extend a dex
             while (!dexDto.addDex(dex)) {
 
                 if (limited && index >= dexCount) {

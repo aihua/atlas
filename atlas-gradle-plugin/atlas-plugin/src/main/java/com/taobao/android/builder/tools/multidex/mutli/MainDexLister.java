@@ -259,7 +259,7 @@ public class MainDexLister {
 
         Set<String> mainDexList = new HashSet<String>();
 
-        //混淆的map
+        //Confusion of the map
         //Map<String, String> classMap = getClassObfMap(config);
 
         File manifest = appVariantContext.getVariantData().getOutputs().get(0).manifestProcessorTask
@@ -303,7 +303,7 @@ public class MainDexLister {
         }
 
         for (String headClass : headClasses) {
-            addRefClazz(classPool, headClass, mainDexList, handleList);
+            addRefClazz(classPool, headClass, mainDexList, handleList,"");
         }
 
         //get manifest
@@ -330,7 +330,7 @@ public class MainDexLister {
             String.valueOf(appVariantContext.getScope().getGlobalScope().getBuildDir()), FD_OUTPUTS, "mapping",
             appVariantContext.getScope().getVariantConfiguration().getDirName()));
         File mappingFile = new File(proguardOut, "mapping.txt");
-        // 解析mapping文件,生成新的mainDexListFile
+        // Parse the mapping file to generate the new mainDexListFile
         if (isMinifyEnabled && mappingFile.exists()) {
             MappingReader mappingReader = new MappingReader(mappingFile);
             MappingReaderProcess process = new MappingReaderProcess();
@@ -353,13 +353,13 @@ public class MainDexLister {
         return realClazz;
     }
 
-    private void addRefClazz(ClassPool classPool, String clazz, Set<String> classList, Set<String> handleList) {
+    private void addRefClazz(ClassPool classPool, String clazz, Set<String> classList, Set<String> handleList, String root) {
 
         if (handleList.contains(clazz)) {
             return;
         }
 
-        //增加黑名单
+        //blacklisting
         if (!multiDexConfig.getMainDexBlackList().isEmpty()) {
             for (String blackItem : multiDexConfig.getMainDexBlackList()) {
                 if (clazz.startsWith(blackItem)) {
@@ -374,7 +374,7 @@ public class MainDexLister {
 
             if (null != ctClass) {
 
-                logger.info("[MainDex] add " + clazz + " to main dex list");
+                logger.info("[MainDex] add " + clazz + " to main dex list , because of " + root);
                 classList.add(clazz);
                 handleList.add(clazz);
 
@@ -385,7 +385,7 @@ public class MainDexLister {
                 }
 
                 for (String clazz2 : references) {
-                    addRefClazz(classPool, clazz2, classList, handleList);
+                    addRefClazz(classPool, clazz2, classList, handleList , root + "->" + clazz);
                 }
             }
         } catch (Throwable e) {

@@ -222,7 +222,7 @@ import proguard.classfile.visitor.ClassVisitor;
 /**
  * Created by wuzhong on 2017/5/12.
  *
- * 查找所有类的父子关系， 是 当前类 -> root library class
+ * Find the parent-child relationship of all classes, yes The current class -> root library class
  */
 public class ClassStructVisitor extends AbstractClasslVisitor implements ClassVisitor {
 
@@ -232,7 +232,7 @@ public class ClassStructVisitor extends AbstractClasslVisitor implements ClassVi
         this.visitorDTO = visitorDTO;
     }
 
-    //class 的顺序不确定有很大的问题
+    //class There are big problems with the order of uncertainty
     @Override
     public void visitProgramClass(ProgramClass programClass) {
 
@@ -250,10 +250,10 @@ public class ClassStructVisitor extends AbstractClasslVisitor implements ClassVi
 
     private void addInterface(ProgramClass programClass, int i) {
         String interfaceClazz = programClass.getInterfaceName(i);
-        //简化处理
+        //Simplify the process
         if (visitorDTO.isLibClazz(interfaceClazz)) {
             ClassStruct classStruct = getOrCreateClassStruct(programClass);
-            classStruct.libInterfaces.add(interfaceClazz);
+            classStruct.addInterface(interfaceClazz);
 
             //add super interface to keep
             addSuperInterfaces(interfaceClazz, classStruct);
@@ -263,15 +263,15 @@ public class ClassStructVisitor extends AbstractClasslVisitor implements ClassVi
 
     private void addSuperInterfaces(String interfaceClazz, ClassStruct classStruct) {
         LibraryClass libraryClass = (LibraryClass)visitorDTO.libraryClassPool.getClass(interfaceClazz);
-        if (null == libraryClass){
+        if (null == libraryClass) {
             return;
         }
         for (int index = 0; index < libraryClass.getInterfaceCount(); index++) {
             Clazz superInter = libraryClass.getInterface(index);
             if (null != superInter && visitorDTO.isLibClazz(superInter.getName())) {
-                classStruct.libInterfaces.add(superInter.getName());
+                classStruct.addInterface(superInter.getName());
 
-                //再迭代
+                //Then an iterative
                 addSuperInterfaces(superInter.getName(), classStruct);
 
             }
@@ -300,7 +300,7 @@ public class ClassStructVisitor extends AbstractClasslVisitor implements ClassVi
     public void visitProgramField(ProgramClass programClass, ProgramField programField) {
         LibraryClazzInfo libraryClazzInfo = getOrCreateLibraryClazzInfo(programClass);
         if (null != libraryClazzInfo) {
-            libraryClazzInfo.appFields.add(programField.getName(programClass));
+            libraryClazzInfo.addField(programField.getName(programClass));
         }
     }
 
@@ -308,7 +308,7 @@ public class ClassStructVisitor extends AbstractClasslVisitor implements ClassVi
     public void visitProgramMethod(ProgramClass programClass, ProgramMethod programMethod) {
         LibraryClazzInfo libraryClazzInfo = getOrCreateLibraryClazzInfo(programClass);
         if (null != libraryClazzInfo) {
-            libraryClazzInfo.appMethods.add(programMethod.getName(programClass));
+            libraryClazzInfo.addMethod(programMethod.getName(programClass));
         }
     }
 

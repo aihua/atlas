@@ -282,7 +282,7 @@ public class AtlasConfigurationHelper {
     }
 
     /**
-     * 设置插件的extension值 , 设置特殊依赖入口
+     * Set the extension value for the plug-in , Set special dependency entry
      **/
     public AtlasExtension createExtendsion() {
 
@@ -303,7 +303,7 @@ public class AtlasConfigurationHelper {
     }
 
     /**
-     * 设置atlas的必要默认参数
+     * Set the necessary default parameters for atlas
      */
     public void updateExtensionAfterEvaluate() {
 
@@ -402,4 +402,17 @@ public class AtlasConfigurationHelper {
     public static final String COMPILE_CONFIGURATION_NAME = "compile";
 
     protected AtlasExtension atlasExtension;
+
+    public void configDexPatchTasksAfterEvaluate() {
+        if (PluginTypeUtils.isAppProject(project)) {
+            AppExtension appExtension = DefaultGroovyMethods.asType(DefaultGroovyMethods.getAt(
+                    project.getExtensions(),
+                    "android"), AppExtension.class);
+            new DexPatchTaskManager(AtlasBuildContext.androidBuilderMap.get(project),
+                    appExtension,
+                    project,
+                    atlasExtension).run();
+        }
+
+    }
 }
